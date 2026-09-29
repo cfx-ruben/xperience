@@ -318,16 +318,46 @@ exports('GetPlayerXPToNextRank', function(playerId) return Xperience:GetPlayerXP
 -- Requires ace permissions: e.g. add_ace group.admin command.addXP allow
 
 -- Allows for restarting the resource
-RegisterCommand('restartXP', function(source, args) Xperience:Restart() end, true)
+lib.addCommand('restartXP', {
+    help = 'Reinicia el sistema de experiencia y recarga las configuraciones',
+    restricted = 'group.admin'
+}, function(source, args, raw)
+    if not exports.qbx_core:IsOptin(source) then exports.qbx_core:Notify(source, 'You are not opted in for admin duty. (/optin to toggle)', 'error') return end
+    Xperience:Restart()
+end)
 
 -- Award XP to player
-RegisterCommand('addXP', function(source, args) Xperience:RunCommand(source, 'addXP', args) end, true)
+lib.addCommand('addXP', {
+    help = 'Añade una cantidad de XP a un jugador',
+    restricted = 'group.admin'
+}, function(source, args, raw)
+    if not exports.qbx_core:IsOptin(source) then exports.qbx_core:Notify(source, 'You are not opted in for admin duty. (/optin to toggle)', 'error') return end
+    Xperience:RunCommand(source, 'addXP', args)
+end)
 
 -- Deduct XP from player
-RegisterCommand('removeXP', function(source, args) Xperience:RunCommand(source, 'removeXP', args) end, true)
+lib.addCommand('removeXP', {
+    help = 'Quita una cantidad de XP a un jugador',
+    restricted = 'group.admin'
+}, function(source, args, raw)
+    if not exports.qbx_core:IsOptin(source) then exports.qbx_core:Notify(source, 'You are not opted in for admin duty. (/optin to toggle)', 'error') return end
+    Xperience:RunCommand(source, 'removeXP', args)
+end)
 
 -- Set a player's XP
-RegisterCommand('setXP', function(source, args) Xperience:RunCommand(source, 'setXP', args) end, true)
+lib.addCommand('setXP', {
+    help = 'Establece la experiencia exacta de un jugador',
+    restricted = 'group.admin'
+}, function(source, args, raw)
+    if not exports.qbx_core:IsOptin(source) then exports.qbx_core:Notify(source, 'You are not opted in for admin duty. (/optin to toggle)', 'error') return end
+    Xperience:RunCommand(source, 'setXP', args)
+end)
 
 -- Set a player's rank
-RegisterCommand('setRank', function(source, args) Xperience:RunCommand(source, 'setRank', args) end, true)
+lib.addCommand('setRank', {
+    help = 'Establece el nivel o rango de un jugador',
+    restricted = 'group.admin'
+}, function(source, args, raw)
+    if not exports.qbx_core:IsOptin(source) then exports.qbx_core:Notify(source, 'You are not opted in for admin duty. (/optin to toggle)', 'error') return end
+    Xperience:RunCommand(source, 'setRank', args)
+end)
