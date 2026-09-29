@@ -9,13 +9,12 @@ author 'Mobius1'
 version '0.2.0'
 
 shared_scripts {
-    'config.lua',
-    'common/ranks.lua',
+    '@ox_lib/init.lua',
+    'shared/config.lua',
     'common/utils.lua',
 }
 
 server_scripts {
-    -- '@mysql-async/lib/MySQL.lua',
     '@oxmysql/lib/MySQL.lua',
     'server/main.lua'
 }
@@ -32,3 +31,6 @@ files {
     'ui/css/*.css',
     'ui/js/*.js'
 }
+
+lua54 'yes'
+use_experimental_fxv2_oal 'yes'

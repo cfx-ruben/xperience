@@ -13,23 +13,31 @@
 }
 
 .theme-hitman .xperience-segment {
+    margin-right: 2px;
     background-color: rgba(255, 255, 255, 0.1);
+    border: 0.2vh solid rgba(255, 255, 255, 0.1);
+    box-sizing: border-box;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.3);
 }
 
 .theme-hitman .xperience-segment .xperience-progress--bar {
-    background-color: rgba(255, 255, 255, 1);
+    background-color: rgba(38, 136, 234, 1);
+    box-shadow: 0 0 5px rgba(38, 136, 234, 1);
 }
 
 .theme-hitman .xperience-segment .xperience-indicator--bar {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(38, 136, 234, 0.2);
+    box-shadow: 0 0 5px rgba(38, 136, 234, 0.2);
 }
 
 .theme-hitman .xperience-remove .xperience-progress--bar {
-    background-color: rgba(255, 0, 0, 0.4);
+    background-color: rgba(255, 0, 0, 1);
+    box-shadow: 0 0 5px rgba(255, 0, 0, 1);
 }
 
 .theme-hitman .xperience-remove .xperience-indicator--bar {
-    background-color: rgba(255, 0, 0, 0.4);
+    background-color: rgba(255, 0, 0, 0.2);
+    box-shadow: 0 0 5px rgba(255, 0, 0, 0.2);
 }
 
 .theme-hitman .xperience-rank {

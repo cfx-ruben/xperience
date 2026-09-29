@@ -8,7 +8,7 @@ function PrintTable(table, nb)
         for i = 1, nb + 1, 1 do
             s = s .. "    "
         end
-    
+
         s = '{\n'
         for k,v in pairs(table) do
             if type(k) ~= 'number' then k = '"'..k..'"' end
@@ -17,11 +17,11 @@ function PrintTable(table, nb)
             end
             s = s .. '['..k..'] = ' .. PrintTable(v, nb + 1) .. ',\n'
         end
-    
+
         for i = 1, nb, 1 do
             s = s .. "    "
         end
-    
+
         return s .. '}'
     else
         return tostring(table)
@@ -39,7 +39,7 @@ function TableSize(t)
 end
 
 -- Check XP is an integer
-function isInt(xp)
+function IsInt(xp)
     xp = tonumber(xp)
     if xp and xp == math.floor(xp) then
         return true
@@ -47,12 +47,12 @@ function isInt(xp)
     return false
 end
 
-function printError(message)
+function PrintError(message)
     local out = string.format('^1Error: ^5%s',  message)
     local s = string.rep("=", string.len(out))
     print('^1' .. s)
     print(out)
-    print('^1' .. s .. '^7')  
+    print('^1' .. s .. '^7')
 
     TriggerEvent('chat:addMessage', {
         color = { 255, 0, 0 },

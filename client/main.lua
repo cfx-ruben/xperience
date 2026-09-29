@@ -1,14 +1,30 @@
+local config = require 'shared.config'
 local Xperience = {}
 local event = 'playerSpawned'
 
-if Config.UseESX then
+if config.framework == 'esx' then
     event = 'esx:playerLoaded'
-elseif Config.UseQBCore then
+elseif config.framework == 'qb' then
     event = 'QBCore:Client:OnPlayerLoaded'
 end
 
+AddEventHandler('onClientResourceStart', function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
 
-RegisterKeyMapping('+xperience', 'Show Rank Bar', 'keyboard', Config.UIKey)
+    CreateThread(function()
+        while not NetworkIsPlayerActive(PlayerId()) do
+            Wait(100)
+        end
+
+        Wait(1500)
+
+        if not Xperience.Initialised then
+            TriggerServerEvent('xperience:server:load')
+        end
+    end)
+end)
+
+RegisterKeyMapping('+xperience', 'Show Rank Bar', 'keyboard', config.key)
 
 function Xperience:Init(data)
     self.CurrentXP      = tonumber(data.xp)
@@ -36,12 +52,12 @@ function Xperience:Init(data)
     TriggerEvent('chat:addSuggestion', '/setXP', 'Set a player\'s current XP', {
         { name = "playerId",    help = 'The player\'s ID' },
         { name = "xp",          help = 'The XP value to set' }
-    })   
-    
+    })
+
     TriggerEvent('chat:addSuggestion', '/setRank', 'Set a player\'s current rank', {
         { name = "playerId",    help = 'The player\'s ID' },
         { name = "rank",        help = 'The rank value to set' }
-    })      
+    })
 end
 
 
@@ -59,14 +75,14 @@ function Xperience:OnRankChange(data, cb)
         TriggerServerEvent("xperience:server:rankUp", current, previous)
     else
         TriggerEvent("xperience:client:rankDown", current, previous, player)
-        TriggerServerEvent("xperience:server:rankDown", current, previous)   
+        TriggerServerEvent("xperience:server:rankDown", current, previous)
     end
-        
-    local Rank = Config.Ranks[current]
+
+    local Rank = config.ranks[current]
     if Rank.Action ~= nil and type(Rank.Action) == "function" then
         Rank.Action(data.rankUp, previous, player)
     end
-    
+
     cb('ok')
 end
 
@@ -99,27 +115,27 @@ function Xperience:InitialiseUI()
     local ranks = self:GetRanksForUI()
     local savedTheme = GetResourceKvpString('xp_theme')
     local theme = {
-        theme = Config.Theme,
-        segments = Config.Themes[Config.Theme].segments,
-        width = Config.Themes[Config.Theme].width,
+        theme = config.theme,
+        segments = config.themes[config.theme].segments,
+        width = config.themes[config.theme].width,
     }
 
-    if savedTheme and Config.Themes[savedTheme] ~= nil then
+    if savedTheme and config.themes[savedTheme] ~= nil then
         theme = {
             theme = savedTheme,
-            segments = Config.Themes[savedTheme].segments,
-            width = Config.Themes[savedTheme].width,
+            segments = config.themes[savedTheme].segments,
+            width = config.themes[savedTheme].width,
         }
     else
-        SetResourceKvp('xp_theme', Config.Theme)
+        SetResourceKvp('xp_theme', config.theme)
     end
-    
+
     SendNUIMessage({
         init = true,
         xp = self:GetXP(),
         ranks = ranks,
-        timeout = Config.Timeout,      
-        theme = theme,         
+        timeout = config.timeout,
+        theme = theme,
     })
 end
 
@@ -146,7 +162,7 @@ end
 ----------------------------------------------------
 
 function Xperience:AddXP(xp)
-    if not isInt(xp) then
+    if not IsInt(xp) then
         return
     end
 
@@ -154,12 +170,12 @@ function Xperience:AddXP(xp)
 
     SendNUIMessage({
         event = 'add',
-        xp = xp      
+        xp = xp
     })
 end
 
 function Xperience:RemoveXP(xp)
-    if not isInt(xp) then
+    if not IsInt(xp) then
         return
     end
 
@@ -169,32 +185,32 @@ function Xperience:RemoveXP(xp)
 
     SendNUIMessage({
         event = 'remove',
-        xp = xp      
+        xp = xp
     })
 end
 
 function Xperience:SetXP(xp)
-    if not isInt(xp) then
+    if not IsInt(xp) then
         return
     end
-    
+
     self:SetData(xp)
-    
+
     SendNUIMessage({
         event = 'set',
-        xp = xp      
+        xp = xp
     })
 end
 
 function Xperience:SetRank(rank)
     rank = tonumber(rank)
 
-    if not rank or not Config.Ranks[rank] then
-        printError('Invalid rank (' .. tostring(rank) .. ') passed to SetRank method')
+    if not rank or not config.ranks[rank] then
+        PrintError('Invalid rank (' .. tostring(rank) .. ') passed to SetRank method')
         return
     end
 
-    local newXP = Config.Ranks[rank].XP
+    local newXP = config.ranks[rank].XP
 
     if newXP ~= nil then
         if newXP > self.CurrentXP then
@@ -220,28 +236,28 @@ function Xperience:GetXP()
 end
 
 function Xperience:GetMaxXP()
-    return Config.Ranks[#Config.Ranks].XP
+    return config.ranks[#config.ranks].XP
 end
 
 function Xperience:GetXPToNextRank()
     local currentRank = self:GetRank()
 
-    if currentRank == #Config.Ranks then
+    if currentRank == #config.ranks then
         return 0
     end
 
-    return Config.Ranks[currentRank + 1].XP - tonumber(self.CurrentXP)   
+    return config.ranks[currentRank + 1].XP - tonumber(self.CurrentXP)
 end
 
 function Xperience:GetXPToRank(rank)
     local GoalRank = tonumber(rank)
     -- Check for valid rank
-    if not Config.Ranks[rank] or not GoalRank or (GoalRank < 1 or GoalRank > #Config.Ranks) then
-        printError('Invalid rank ('.. GoalRank ..') passed to GetXPToRank method')
+    if not config.ranks[rank] or not GoalRank or (GoalRank < 1 or GoalRank > #config.ranks) then
+        PrintError('Invalid rank ('.. GoalRank ..') passed to GetXPToRank method')
         return
     end
 
-    local goalXP = tonumber(Config.Ranks[GoalRank].XP)
+    local goalXP = tonumber(config.ranks[GoalRank].XP)
 
     return goalXP - self.CurrentXP
 end
@@ -251,10 +267,10 @@ function Xperience:GetRank(xp)
         return tonumber(self.CurrentRank)
     end
 
-    local len = #Config.Ranks
+    local len = #config.ranks
     for rank = 1, len do
         if rank < len then
-            if Config.Ranks[rank + 1].XP > tonumber(xp) then
+            if config.ranks[rank + 1].XP > tonumber(xp) then
                 return rank
             end
         else
@@ -264,7 +280,7 @@ function Xperience:GetRank(xp)
 end
 
 function Xperience:GetMaxRank()
-    return #Config.Ranks
+    return #config.ranks
 end
 
 function Xperience:SetTheme(theme)
@@ -275,7 +291,7 @@ function Xperience:SetTheme(theme)
         })
     end
 
-    if Config.Themes[theme] == nil then
+    if config.themes[theme] == nil then
         return TriggerEvent('chat:addMessage', {
             color = { 255, 0, 0 },
             args = { "xperience", 'Invalid theme name' }
@@ -289,11 +305,11 @@ function Xperience:SetTheme(theme)
         event = 'theme',
         theme = {
             theme = theme,
-            segments = Config.Themes[theme].segments,
-            width = Config.Themes[theme].width,
-        }, 
+            segments = config.themes[theme].segments,
+            width = config.themes[theme].width,
+        },
     })
-    
+
     -- Let the player know the theme was changed successfully
     TriggerEvent('chat:addMessage', {
         color = { 255, 255, 255 },
@@ -307,10 +323,10 @@ end
 ----------------------------------------------------
 function Xperience:GetRanksForUI()
     local ranks = {}
-    local len = #Config.Ranks
+    local len = #config.ranks
 
     for i = 1, len do
-        ranks[i] = Config.Ranks[i].XP
+        ranks[i] = config.ranks[i].XP
     end
 
     return ranks
@@ -318,7 +334,7 @@ end
 
 -- Prevent XP from going over / under limits
 function Xperience:LimitXP(xp)
-    local Max = tonumber(Config.Ranks[#Config.Ranks].XP)
+    local Max = tonumber(config.ranks[#config.ranks].XP)
 
     if xp > Max then
         xp = Max
@@ -335,8 +351,8 @@ end
 ----------------------------------------------------
 
 RegisterNetEvent(event, function()
-    Wait(1000) 
-    TriggerServerEvent('xperience:server:load') 
+    Wait(1000)
+    TriggerServerEvent('xperience:server:load')
 end)
 
 RegisterNetEvent('xperience:client:init', function(...) Xperience:Init(...) end)

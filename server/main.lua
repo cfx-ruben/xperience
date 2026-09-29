@@ -1,3 +1,4 @@
+local config = require 'shared.config'
 local MySQLReady, QBCore, ESX = false, nil, nil
 local Xperience = {}
 
@@ -11,27 +12,27 @@ function Xperience:Init()
     self.ready = false
 
     local Ranks = self:CheckRanks()
-    
+
     if #Ranks > 0 then
         PrintTable(Ranks)
         return
     end
 
-    if Config.UseQBCore and Config.UseESX then
-        return printError("You can't use QBCore and ESX together!")
+    if config.framework == 'qb' and config.framework == 'esx' then
+        return PrintError("You can't use QBCore and ESX together!")
     end
 
-    if Config.UseQBCore then
+    if config.framework == 'qb' then
         local status = GetResourceState('qb-core')
         if status ~= 'started' then
-            return printError(string.format('QBCORE is %s!', status))
+            return PrintError(string.format('QBCORE is %s!', status))
         end
 
         QBCore = exports['qb-core']:GetCoreObject()
-    elseif Config.UseESX then
+    elseif config.framework == 'esx' then
         local status = GetResourceState('es_extended')
         if status ~= 'started' then
-            return printError(string.format('ESX is %s!', status))
+            return PrintError(string.format('ESX is %s!', status))
         end
 
         ESX = exports['es_extended']:getSharedObject()
@@ -46,25 +47,25 @@ function Xperience:Load(src)
     if self.ready then
         local resp, result = false, false
 
-        if Config.UseQBCore then
+        if config.framework == 'qb' then
             local Player = QBCore.Functions.GetPlayer(src)
             if Player then
                 result = {}
                 result.xp = tonumber(Player.PlayerData.metadata.xp) or 0
                 result.rank = tonumber(Player.PlayerData.metadata.rank) or 1
-                
+
                 resp = true
             end
         else
             local license = self:GetPlayer(src)
-            
-            if Config.UseESX then
+
+            if config.framework == 'esx' then
                 local statement = 'SELECT * FROM users WHERE license = @license'
 
-                if Config.ESXIdentifierColumn == 'identifier' then
+                if config.esxIdentifierColumn == 'identifier' then
                     statement = 'SELECT * FROM users WHERE identifier = @license'
                 end
-                
+
                 MySQL.Async.fetchAll(statement, { ['@license'] = license }, function(res)
                     if res[1] then
                         result = {}
@@ -93,7 +94,7 @@ function Xperience:Load(src)
 
         while not resp do Wait(0) end
 
-        if Config.Debug then
+        if config.debug then
             print(string.format("^5LOADED DATA FOR PLAYER: %s (XP %s, Rank %s)^7", GetPlayerName(src), result.xp, result.rank))
         end
 
@@ -102,7 +103,7 @@ function Xperience:Load(src)
 end
 
 function Xperience:Save(src, xp, rank)
-    if Config.UseQBCore then
+    if config.framework == 'qb' then
         local Player = QBCore.Functions.GetPlayer(src)
 
         Player.Functions.SetMetaData('xp', tonumber(xp))
@@ -110,7 +111,7 @@ function Xperience:Save(src, xp, rank)
         Player.Functions.Save()
     else
         local license = self:GetPlayer(src)
-        if Config.UseESX then
+        if config.framework == 'esx' then
             local Player = ESX.GetPlayerFromId(src)
 
             Player.set("xp", tonumber(xp))
@@ -118,37 +119,37 @@ function Xperience:Save(src, xp, rank)
 
             local statement = 'UPDATE users SET xp = @xp, rank = @rank WHERE license = @license'
 
-            if Config.ESXIdentifierColumn == 'identifier' then
+            if config.esxIdentifierColumn == 'identifier' then
                 statement = 'UPDATE users SET xp = @xp, rank = @rank WHERE identifier = @license'
             end
 
             MySQL.Async.execute(statement, { ['@xp'] = xp, ['@rank'] = rank, ['@license'] = license }, function(affectedRows)
                 if not affectedRows then
-                    printError('There was a problem saving the user\'s data!')
+                    PrintError('There was a problem saving the user\'s data!')
                 end
             end)
         else
             MySQL.Async.execute('UPDATE user_experience SET xp = @xp, rank = @rank WHERE identifier = @identifier', { ['@xp'] = xp, ['@rank'] = rank, ['@identifier'] = license }, function(affectedRows)
                 if not affectedRows then
-                    printError('There was a problem saving the user\'s data!')
+                    PrintError('There was a problem saving the user\'s data!')
                 end
             end)
         end
     end
 
-    if Config.Debug then
+    if config.debug then
         print(string.format("^5SAVED DATA FOR PLAYER: %s (XP %s, Rank %s)^7", GetPlayerName(src), xp, rank))
     end
 end
 
 function Xperience:GetPlayerXP(playerId)
-    if Config.UseQBCore then
+    if config.framework == 'qb' then
         local Player = QBCore.Functions.GetPlayer(playerId)
 
         if Player then
             return Player.PlayerData.metadata.xp
         end
-    elseif Config.UseESX then
+    elseif config.framework == 'esx' then
         local Player = ESX.GetPlayerFromId(playerId)
 
         if Player then
@@ -165,22 +166,22 @@ function Xperience:GetPlayerXP(playerId)
 end
 
 function Xperience:GetPlayerRank(playerId)
-    if Config.UseQBCore then
+    if config.framework == 'qb' then
         local Player = QBCore.Functions.GetPlayer(playerId)
 
         if Player then
             return Player.PlayerData.metadata.rank
         end
-    elseif Config.UseESX then
+    elseif config.framework == 'esx' then
         local Player = ESX.GetPlayerFromId(playerId)
-    
+
         if Player then
             return tonumber(Player.get("rank"))
         end
     else
         local license = self:GetPlayer(playerId)
         local rank = MySQL.Sync.fetchScalar('SELECT rank FROM user_experience WHERE identifier = @license', { ['@license'] = license })
-    
+
         return tonumber(rank)
     end
 end
@@ -189,7 +190,7 @@ function Xperience:GetPlayerXPToNextRank(playerId)
     local currentXP = self:GetPlayerXP(playerId)
     local currentRank = self:GetPlayerRank(playerId)
 
-    return tonumber(Config.Ranks[currentRank + 1].XP) - tonumber(currentXP)   
+    return tonumber(config.ranks[currentRank + 1].XP) - tonumber(currentXP)
 end
 
 function Xperience:GetPlayerXPToRank(playerId, rank)
@@ -197,12 +198,12 @@ function Xperience:GetPlayerXPToRank(playerId, rank)
     local rank = tonumber(rank)
 
     -- Check for valid rank
-    if not rank or (rank < 1 or rank > #Config.Ranks) then
-        printError('Invalid rank ('.. rank ..') passed to GetPlayerXPToRank method')
+    if not rank or (rank < 1 or rank > #config.ranks) then
+        PrintError('Invalid rank ('.. rank ..') passed to GetPlayerXPToRank method')
         return
     end
 
-    local goalXP = tonumber(Config.Ranks[rank].XP)
+    local goalXP = tonumber(config.ranks[rank].XP)
 
     return goalXP - currentXP
 end
@@ -210,29 +211,29 @@ end
 function Xperience:GetPlayer(src)
     for _, id in pairs(GetPlayerIdentifiers(src)) do
         if string.sub(id, 1, string.len('license:')) == 'license:' then
-            if Config.UseESX and Config.ESXIdentifierColumn == 'license' then
+            if config.framework == 'esx' and config.esxIdentifierColumn == 'license' then
                 return id
             end
 
             return string.sub(id, 9, string.len(id))
         end
-    end 
-    
+    end
+
     return false
 end
 
 function Xperience:CheckRanks()
-    local Limit = #Config.Ranks
+    local Limit = #config.ranks
     local InValid = {}
 
     for i = 1, Limit do
-        local RankXP = Config.Ranks[i].XP
+        local RankXP = config.ranks[i].XP
 
-        if not isInt(RankXP) then
+        if not IsInt(RankXP) then
             table.insert(InValid, string.format('Rank %s: %s', i,  RankXP))
-            printError(string.format('Invalid XP (%s) for Rank %s', RankXP, i))
+            PrintError(string.format('Invalid XP (%s) for Rank %s', RankXP, i))
         end
-        
+
     end
 
     return InValid
@@ -241,18 +242,18 @@ end
 function Xperience:RunCommand(src, type, args)
     local playerId = tonumber(args[1])
     local value = tonumber(args[2])
-    
+
     if playerId ~= nil and value ~= nil then
         local player = self:GetPlayer(playerId)
-    
+
         if not player then
             return self:PrintError(src, 'Player is offline')
         end
-    
+
         TriggerClientEvent('xperience:client:' .. type, playerId, value)
     end
 
-    if Config.Debug then
+    if config.debug then
         if src ~= 0 then
             print(string.format("^5PLAYER %s EXECUTED COMMAND %s^7", GetPlayerName(src), type))
         end
@@ -260,11 +261,11 @@ function Xperience:RunCommand(src, type, args)
 end
 
 function Xperience:Notify(src, message, type)
-    if Config.UseQBCore then
+    if config.framework == 'qb' then
         TriggerClientEvent('QBCore:Notify', src, message, type)
-    elseif Config.UseESX then
+    elseif config.framework == 'esx' then
         TriggerClientEvent('esx:showNotification', src, message)
-    end  
+    end
 end
 
 function Xperience:Restart()
