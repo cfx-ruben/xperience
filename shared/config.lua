@@ -1,11 +1,8 @@
 return {
-    debug = true, -- Use true or false
-    timeout = 5000, -- Sets the time in ms that the XP bar is displayed before fading out
-    key = 'Z', -- The key that toggles the UI - default is "z"
+    debug = true,     -- Use true or false
+    timeout = 5000,   -- Sets the time in ms that the XP bar is displayed before fading out
+    key = 'Z',        -- The key that toggles the UI - default is "z"
     theme = 'hitman', -- Set the default theme
-
-    framework = 'qb', -- Use 'qb' or 'esx'
-    esxIdentifierColumn = 'identifier', -- Use your esx identifier column
 
     -- Segments: Sets the number of segments the XP bar has. Native = 10, Max = 20
     -- Width: -- Sets the width of the XP bar in px

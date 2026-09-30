@@ -1,12 +1,6 @@
 local config = require 'shared.config'
-local Xperience = {}
-local event = 'playerSpawned'
-
-if config.framework == 'esx' then
-    event = 'esx:playerLoaded'
-elseif config.framework == 'qb' then
-    event = 'QBCore:Client:OnPlayerLoaded'
-end
+local Initialised = false
+local event = 'QBCore:Client:OnPlayerLoaded'
 
 AddEventHandler('onClientResourceStart', function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
@@ -18,64 +12,35 @@ AddEventHandler('onClientResourceStart', function(resourceName)
 
         Wait(1500)
 
-        if not Xperience.Initialised then
+        if not Initialised then
             TriggerServerEvent('xperience:server:load')
         end
     end)
 end)
 
 lib.addKeybind({
-    name = '+xperience',
-    description = 'Show Rank Bar',
-    defaultKey = config.key,
-    allowInPauseMenu = true,
-    onPressed = function(self)
-        if self.Initialised then
-            self:ToggleUI()
+    name = 'xperience',
+    description = 'Mostrar barra de rango',
+    defaultKey = config.key or 'Z',
+    onPressed = function()
+        if Initialised then
+            ToggleUI()
         end
     end
 })
 
-function Xperience:Init(data)
-    self.CurrentXP      = tonumber(data.xp)
-    self.CurrentRank    = tonumber(data.rank)
+function Init(data)
+    CurrentXP   = tonumber(data.xp)
+    CurrentRank = tonumber(data.rank)
 
-    self:InitialiseUI()
-
-    RegisterCommand('+xperience', function()
-        if self.Initialised then
-            self:ToggleUI()
-        end
-    end)
-    RegisterCommand('-xperience', function() end)
-
-    TriggerEvent('chat:addSuggestion', '/addXP', 'Give XP to player', {
-        { name = "playerId",    help = 'The player\'s ID' },
-        { name = "xp",          help = 'The XP value to award' }
-    })
-
-    TriggerEvent('chat:addSuggestion', '/removeXP', 'Deduct XP from player', {
-        { name = "playerId",    help = 'The player\'s ID' },
-        { name = "xp",          help = 'The XP value to deduct' }
-    })
-
-    TriggerEvent('chat:addSuggestion', '/setXP', 'Set a player\'s current XP', {
-        { name = "playerId",    help = 'The player\'s ID' },
-        { name = "xp",          help = 'The XP value to set' }
-    })
-
-    TriggerEvent('chat:addSuggestion', '/setRank', 'Set a player\'s current rank', {
-        { name = "playerId",    help = 'The player\'s ID' },
-        { name = "rank",        help = 'The rank value to set' }
-    })
+    InitialiseUI()
 end
-
 
 ----------------------------------------------------
 --                 EVENT CALLBACKS                --
 ----------------------------------------------------
 
-function Xperience:OnRankChange(data, cb)
+function OnRankChange(data, cb)
     local player = PlayerPedId()
     local current = tonumber(data.current)
     local previous = tonumber(data.previous)
@@ -96,33 +61,30 @@ function Xperience:OnRankChange(data, cb)
     cb('ok')
 end
 
-function Xperience:OnUIInitialised(data, cb)
-    self.Initialised = true
-    self.UIOpen = false
+function OnUIInitialised(data, cb)
+    Initialised = true
+    UIOpen = false
 
     cb('ok')
 end
 
-function Xperience:OnSave(data, cb)
-    self:SetData(data.xp)
-
-    TriggerServerEvent('xperience:server:save', self.CurrentXP, self.CurrentRank)
-
+function OnSave(data, cb)
+    SetData(data.xp)
+    TriggerServerEvent('xperience:server:save', CurrentXP, CurrentRank)
     cb('ok')
 end
 
-function Xperience:OnUIClosed(data, cb)
-    self.UIOpen = false
+function OnUIClosed(data, cb)
+    UIOpen = false
     cb('ok')
 end
-
 
 ----------------------------------------------------
 --                       UI                       --
 ----------------------------------------------------
 
-function Xperience:InitialiseUI()
-    local ranks = self:GetRanksForUI()
+function InitialiseUI()
+    local ranks = GetRanksForUI()
     local savedTheme = GetResourceKvpString('xp_theme')
     local theme = {
         theme = config.theme,
@@ -142,28 +104,28 @@ function Xperience:InitialiseUI()
 
     SendNUIMessage({
         init = true,
-        xp = self:GetXP(),
+        xp = GetXP(),
         ranks = ranks,
         timeout = config.timeout,
         theme = theme,
     })
 end
 
-function Xperience:OpenUI()
-    self.UIOpen = true
+function OpenUI()
+    UIOpen = true
     SendNUIMessage({ event = 'show' })
 end
 
-function Xperience:CloseUI()
-    self.UIOpen = false
+function CloseUI()
+    UIOpen = false
     SendNUIMessage({ event = 'hide' })
 end
 
-function Xperience:ToggleUI()
-    if self.UIOpen then
-        self:CloseUI()
+function ToggleUI()
+    if UIOpen then
+        CloseUI()
     else
-        self:OpenUI()
+        OpenUI()
     end
 end
 
@@ -171,12 +133,10 @@ end
 --                    SETTERS                     --
 ----------------------------------------------------
 
-function Xperience:AddXP(xp)
-    if not IsInt(xp) then
-        return
-    end
+function AddXP(xp)
+    if not IsInt(xp) then return end
 
-    self:SetData(xp)
+    SetData(GetXP() + xp)
 
     SendNUIMessage({
         event = 'add',
@@ -184,14 +144,11 @@ function Xperience:AddXP(xp)
     })
 end
 
-function Xperience:RemoveXP(xp)
-    if not IsInt(xp) then
-        return
-    end
+function RemoveXP(xp)
+    if not IsInt(xp) then return end
 
-    local newXP = self:GetXP() - xp
-
-    self:SetData(newXP)
+    local newXP = GetXP() - xp
+    SetData(newXP)
 
     SendNUIMessage({
         event = 'remove',
@@ -199,12 +156,10 @@ function Xperience:RemoveXP(xp)
     })
 end
 
-function Xperience:SetXP(xp)
-    if not IsInt(xp) then
-        return
-    end
+function SetXP(xp)
+    if not IsInt(xp) then return end
 
-    self:SetData(xp)
+    SetData(xp)
 
     SendNUIMessage({
         event = 'set',
@@ -212,69 +167,68 @@ function Xperience:SetXP(xp)
     })
 end
 
-function Xperience:SetRank(rank)
+function SetRank(rank)
     rank = tonumber(rank)
 
     if not rank or not config.ranks[rank] then
-        PrintError('Invalid rank (' .. tostring(rank) .. ') passed to SetRank method')
+        print('Invalid rank (' .. tostring(rank) .. ') passed to SetRank method')
         return
     end
 
     local newXP = config.ranks[rank].XP
 
     if newXP ~= nil then
-        if newXP > self.CurrentXP then
-            self:AddXP(newXP - self.CurrentXP)
-        elseif newXP < self.CurrentXP then
-            self:RemoveXP(self.CurrentXP - newXP)
+        if newXP > CurrentXP then
+            AddXP(newXP - CurrentXP)
+        elseif newXP < CurrentXP then
+            RemoveXP(CurrentXP - newXP)
         end
     end
 end
 
-function Xperience:SetData(xp)
-    self.CurrentXP = self:LimitXP(xp)
-    self.CurrentRank = self:GetRank(xp)
+function SetData(xp)
+    CurrentXP = LimitXP(xp)
+    CurrentRank = GetRank(xp)
 end
-
 
 ----------------------------------------------------
 --                    GETTERS                     --
 ----------------------------------------------------
 
-function Xperience:GetXP()
-    return tonumber(self.CurrentXP)
+function GetXP()
+    return tonumber(CurrentXP)
 end
 
-function Xperience:GetMaxXP()
+function GetMaxXP()
     return config.ranks[#config.ranks].XP
 end
 
-function Xperience:GetXPToNextRank()
-    local currentRank = self:GetRank()
+function GetXPToNextRank()
+    local currentRank = GetRank()
 
     if currentRank == #config.ranks then
         return 0
     end
 
-    return config.ranks[currentRank + 1].XP - tonumber(self.CurrentXP)
+    return config.ranks[currentRank + 1].XP - tonumber(CurrentXP)
 end
 
-function Xperience:GetXPToRank(rank)
+function GetXPToRank(rank)
     local GoalRank = tonumber(rank)
     -- Check for valid rank
-    if not config.ranks[rank] or not GoalRank or (GoalRank < 1 or GoalRank > #config.ranks) then
-        PrintError('Invalid rank ('.. GoalRank ..') passed to GetXPToRank method')
+    if not GoalRank or not config.ranks[GoalRank] or (GoalRank < 1 or GoalRank > #config.ranks) then
+        print('Invalid rank (' .. tostring(rank) .. ') passed to GetXPToRank method')
         return
     end
 
     local goalXP = tonumber(config.ranks[GoalRank].XP)
 
-    return goalXP - self.CurrentXP
+    return goalXP - CurrentXP
 end
 
-function Xperience:GetRank(xp)
+function GetRank(xp)
     if xp == nil then
-        return tonumber(self.CurrentRank)
+        return tonumber(CurrentRank)
     end
 
     local len = #config.ranks
@@ -289,14 +243,14 @@ function Xperience:GetRank(xp)
     end
 end
 
-function Xperience:GetMaxRank()
+function GetMaxRank()
     return #config.ranks
 end
 
 ----------------------------------------------------
 --                    UTILITIES                   --
 ----------------------------------------------------
-function Xperience:GetRanksForUI()
+function GetRanksForUI()
     local ranks = {}
     local len = #config.ranks
 
@@ -308,7 +262,7 @@ function Xperience:GetRanksForUI()
 end
 
 -- Prevent XP from going over / under limits
-function Xperience:LimitXP(xp)
+function LimitXP(xp)
     local Max = tonumber(config.ranks[#config.ranks].XP)
 
     if xp > Max then
@@ -320,7 +274,6 @@ function Xperience:LimitXP(xp)
     return xp
 end
 
-
 ----------------------------------------------------
 --                 EVENT HANDLERS                 --
 ----------------------------------------------------
@@ -330,29 +283,53 @@ RegisterNetEvent(event, function()
     TriggerServerEvent('xperience:server:load')
 end)
 
-RegisterNetEvent('xperience:client:init', function(...) Xperience:Init(...) end)
-RegisterNetEvent('xperience:client:addXP', function(...) Xperience:AddXP(...) end)
-RegisterNetEvent('xperience:client:removeXP', function(...) Xperience:RemoveXP(...) end)
-RegisterNetEvent('xperience:client:setXP', function(...) Xperience:SetXP(...) end)
-RegisterNetEvent('xperience:client:setRank', function(...) Xperience:SetRank(...) end)
+RegisterNetEvent('xperience:client:init', function(...)
+    Init(...)
+end)
 
-RegisterNUICallback('rankchange', function(...) Xperience:OnRankChange(...) end)
-RegisterNUICallback('ui_initialised', function(...) Xperience:OnUIInitialised(...) end)
-RegisterNUICallback('ui_closed', function(...) Xperience:OnUIClosed(...) end)
-RegisterNUICallback('save', function(...) Xperience:OnSave(...) end)
+RegisterNetEvent('xperience:client:addXP', function(...)
+    AddXP(...)
+end)
+
+RegisterNetEvent('xperience:client:removeXP', function(...)
+    RemoveXP(...)
+end)
+
+RegisterNetEvent('xperience:client:setXP', function(...)
+    SetXP(...)
+end)
+
+RegisterNetEvent('xperience:client:setRank', function(...)
+    SetRank(...)
+end)
+
+RegisterNUICallback('rankchange', function(...)
+    OnRankChange(...)
+end)
+
+RegisterNUICallback('ui_initialised', function(...)
+    OnUIInitialised(...)
+end)
+
+RegisterNUICallback('ui_closed', function(...)
+    OnUIClosed(...)
+end)
+
+RegisterNUICallback('save', function(...)
+    OnSave(...)
+end)
 
 ----------------------------------------------------
 --                    EXPORTS                     --
 ----------------------------------------------------
+exports('AddXP', AddXP)
+exports('RemoveXP', RemoveXP)
+exports('SetXP', SetXP)
+exports('SetRank', SetRank)
 
-exports('AddXP', function(...) return Xperience:AddXP(...) end)
-exports('RemoveXP', function(...) return Xperience:RemoveXP(...) end)
-exports('SetXP', function(...) return Xperience:SetXP(...) end)
-exports('SetRank', function(...) return Xperience:SetRank(...) end)
-
-exports('GetXP', function(...) return Xperience:GetXP(...) end)
-exports('GetMaxXP', function(...) return Xperience:GetMaxXP(...) end)
-exports('GetXPToRank', function(...) return Xperience:GetXPToRank(...) end)
-exports('GetXPToNextRank', function(...) return Xperience:GetXPToNextRank(...) end)
-exports('GetRank', function(...) return Xperience:GetRank(...) end)
-exports('GetMaxRank', function(...) return Xperience:GetMaxRank(...) end)
+exports('GetXP', GetXP)
+exports('GetMaxXP', GetMaxXP)
+exports('GetXPToRank', GetXPToRank)
+exports('GetXPToNextRank', GetXPToNextRank)
+exports('GetRank', GetRank)
+exports('GetMaxRank', GetMaxRank)
